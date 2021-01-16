@@ -84,6 +84,9 @@ class Frame(object):
         node.Ry = Ry 
         node.Rz = Rz 
 
+        #define which displacment relations are immutable
+        node.support = [not Ux is None,  not Uy is None, not Uz is None, not Rx is None,  not Ry is None, not Rz is None]
+
     def makeRelease(self, Node_name, Ux = None, Uy = None, Uz = None, Rx = None, Ry = None, Rz = None):
 
         node = self.Nodes[Node_name]
@@ -299,7 +302,7 @@ class Frame(object):
                 node.Rz = U1[idx,0]
 
 
-    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True): 
+    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
     
         fig = plt.figure() 
         axes = fig.add_axes([0.1,0.1,3,3],projection='3d') #Indicate a 3D plot 
@@ -324,8 +327,8 @@ class Frame(object):
             #plot deformed members
             #TODO somehow implement rotation
             if deformed:
-                ndeformation = np.array([mbr.nNode.Ux, mbr.nNode.Uy, mbr.nNode.Uz])
-                pdeformation = np.array([mbr.pNode.Ux, mbr.pNode.Uy, mbr.pNode.Uz])
+                ndeformation = xFac*np.array([mbr.nNode.Ux, mbr.nNode.Uy, mbr.nNode.Uz])
+                pdeformation = xFac*np.array([mbr.pNode.Ux, mbr.pNode.Uy, mbr.pNode.Uz])
                 nNode_pos = (mbr.nNode.pos() + ndeformation).tolist()
                 pNode_pos = (mbr.pNode.pos() + pdeformation).tolist()
                 axes.plot3D(*zip(nNode_pos, pNode_pos),'r') #Plot 3D member
@@ -360,7 +363,12 @@ class Frame(object):
             axes.text(node.x+dx, node.y+dy, node.z+dz, name, fontsize=16) #Add node label
 
             if deformed:
-                axes.plot3D([node.x + node.Ux],[node.y + node.Uy],[node.z + node.Uz],'ro',ms=6) #Plot 3D node
+                axes.plot3D([node.x + xFac*node.Ux],[node.y + xFac*node.Uy],[node.z + xFac*node.Uz],'ro',ms=6) #Plot 3D node
+        
+        #draw Nodal Froce Vectors
+        for nLoad in self.NodalLoads:
+            mag = np.sum(np.square(nLoad.vector().T))**0.5
+            axes.quiver([nLoad.Node.x], [nLoad.Node.y], [nLoad.Node.z], [nLoad.Fx], [nLoad.Fy], [nLoad.Fz], length=0.5, normalize=True, pivot='tip')
 
         #Set axis limits to provide margin around structure
         axes.set_xlim([minX-x_margin,maxX+x_margin])
@@ -374,9 +382,26 @@ class Frame(object):
         axes.grid()
         plt.show()
 
+    def reset(self):
+        """
+            Reset computed values to allow recomputation by the analyze function
+        """
+        for _, node in self.Nodes.items():
+            # reset unkown displacements/rotations 
+            if not node.support[0]:
+                node.Ux = None
 
+            if not node.support[1]:
+                node.Uy = None
 
+            if not node.support[2]:
+                node.Uz = None
 
+            if not node.support[3]:
+                node.Rx = None
 
+            if not node.support[4]:
+                node.Ry = None
 
-        
+            if not node.support[5]:
+                node.Rz = None

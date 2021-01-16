@@ -135,7 +135,7 @@ class Member(object):
 
 
     def _compute_L(self):
-        return np.sum(np.square(self.pNode.pos()-self.nNode.pos()))
+        return np.sum(np.square(self.pNode.pos()-self.nNode.pos()))**0.5
 
     def _compute_R(self):
         nX,nY,nZ = self.nNode.pos()

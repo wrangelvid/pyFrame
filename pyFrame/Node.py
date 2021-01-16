@@ -17,7 +17,8 @@ class Node(object):
         self.Ry = None
         self.Rz = None
 
-       
+        #define which displacement/rotation relations are immutable due to support condition
+        self.support = [False for i in range(6)] 
         
     def pos(self):
         return array([self.x, self.y, self.z])
