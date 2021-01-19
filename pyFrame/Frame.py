@@ -344,27 +344,27 @@ class Frame(object):
             
             if remainder == 0:
                 node.Ux = U1[idx,0]
-                node.Fx = PE2[idx,0]
+                node.Fx = PE1[idx,0]
 
             if remainder == 1:
                 node.Uy = U1[idx,0]
-                node.Fy = PE2[idx,0]
+                node.Fy = PE1[idx,0]
 
             if remainder == 2:
                 node.Uz = U1[idx,0]
-                node.Fy = PE2[idx,0]
+                node.Fz = PE1[idx,0]
             
             if remainder == 3:
                 node.Rx = U1[idx,0]
-                node.Mx = PE2[idx,0]
+                node.Mx = PE1[idx,0]
 
             if remainder == 4:
                 node.Ry = U1[idx,0]
-                node.My = PE2[idx,0]
+                node.My = PE1[idx,0]
 
             if remainder == 5:
                 node.Rz = U1[idx,0]
-                node.Mz = PE2[idx,0]
+                node.Mz = PE1[idx,0]
 
         #save remaining known reactions due to nodal loads
         for idx, DoF_idx in enumerate(U2_DoF_idx):
@@ -374,27 +374,25 @@ class Frame(object):
             node = self.Nodes[nID_to_nName[id]]
             
             if remainder == 0:
-                node.Fx = PE1[idx,0]
+                node.Fx = PE2[idx,0]
 
             if remainder == 1:
-                node.Fy = PE1[idx,0]
+                node.Fy = PE2[idx,0]
 
             if remainder == 2:
-                node.Fy = PE1[idx,0]
+                node.Fz = PE2[idx,0]
             
             if remainder == 3:
-                node.Mx = PE1[idx,0]
+                node.Mx = PE2[idx,0]
 
             if remainder == 4:
-                node.My = PE1[idx,0]
+                node.My = PE2[idx,0]
 
             if remainder == 5:
-                node.Mz = PE1[idx,0]
-            
-            
+                node.Mz = PE2[idx,0]
 
 
-    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
+    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, reactions=True, xFac = 1.0): 
     
         fig = plt.figure() 
         axes = fig.add_axes([0.1,0.1,3,3],projection='3d') #Indicate a 3D plot 
@@ -463,8 +461,15 @@ class Frame(object):
             axes.plot3D([node.x],[node.y],[node.z],'bo',ms=6) #Plot 3D node
             axes.text(node.x+dx, node.y+dy, node.z+dz, name, fontsize=16) #Add node label
 
+            #plot deformed node
             if deformed:
                 axes.plot3D([node.x + xFac*node.Ux],[node.y + xFac*node.Uy],[node.z + xFac*node.Uz],'ro',ms=6) #Plot 3D node
+
+            #plot reactions
+            if reactions:
+                #TODO implement moment reactions
+                axes.quiver(*node.pos().tolist(),*node.reaction()[:3].tolist(), length=0.5, normalize=True, pivot='tip', colors='g')
+
         
         #draw Nodal Force Vectors
         for nLoad in filter(lambda load: type(load) == NodalForce ,self.NodalLoads):

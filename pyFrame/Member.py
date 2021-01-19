@@ -116,34 +116,34 @@ class Member(object):
         return self.R.T@self.Kl@self.R
 
     @property
-    def Ul(self):
-        """
-            local displacement vector
-        """
-        Ul = np.zeros((12,1))
-        #retrieve displacements of negative node
-        Ul[0,0] = self.nNode.Ux 
-        Ul[1,0] = self.nNode.Uy 
-        Ul[2,0] = self.nNode.Uz 
-        Ul[3,0] = self.nNode.Rx 
-        Ul[4,0] = self.nNode.Ry 
-        Ul[5,0] = self.nNode.Rz 
-
-        #retrieve displacements of positve node
-        Ul[6,0] = self.pNode.Ux 
-        Ul[7,0] = self.pNode.Uy 
-        Ul[8,0] = self.pNode.Uz 
-        Ul[9,0] = self.pNode.Rx 
-        Ul[10,0] = self.pNode.Ry 
-        Ul[11,0] = self.pNode.Rz 
-        return Ul
-
-    @property
     def Ug(self):
         """
             global displacement vector
         """
-        return self.R@self.Ul
+        Ug = np.zeros((12,1))
+        #retrieve displacements of negative node
+        Ug[0,0] = self.nNode.Ux 
+        Ug[1,0] = self.nNode.Uy 
+        Ug[2,0] = self.nNode.Uz 
+        Ug[3,0] = self.nNode.Rx 
+        Ug[4,0] = self.nNode.Ry 
+        Ug[5,0] = self.nNode.Rz 
+
+        #retrieve displacements of positve node
+        Ug[6,0] = self.pNode.Ux 
+        Ug[7,0] = self.pNode.Uy 
+        Ug[8,0] = self.pNode.Uz 
+        Ug[9,0] = self.pNode.Rx 
+        Ug[10,0] = self.pNode.Ry 
+        Ug[11,0] = self.pNode.Rz 
+        return Ug
+
+    @property
+    def Ul(self):
+        """
+            local displacement vector
+        """
+        return self.R@self.Ug
 
     @property
     def PIl_unc(self):
@@ -398,7 +398,7 @@ class Member(object):
         """
             compute local end force vector
         """
-        return self.kl@self.Ul + self.PIl
+        return self.Kl@self.Ul + self.PIl
     
     def _compute_Fg(self):
         """

@@ -35,4 +35,11 @@ class Node(object):
     def pos(self):
         return array([self.x, self.y, self.z])
     
+    def deformation(self):
+        return array([self.Ux, self.Uy, self.Uz, self.Rx, self.Ry, self.Rz])
+    
+    def reaction(self):
+        return array([self.Fx, self.Fy, self.Fz, self.Mx, self.My, self.Mz])
+
+
     
