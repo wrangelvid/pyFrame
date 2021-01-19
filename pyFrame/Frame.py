@@ -396,7 +396,7 @@ class Frame(object):
         for _, mbr in self.Members.items():
             mbr.Fg
 
-    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, reactions=True, xFac = 1.0): 
+    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, showNodeName = True, showMemberName = True, deformed = True, reactions=True, xFac = 1.0): 
     
         fig = plt.figure() 
         axes = fig.add_axes([0.1,0.1,3,3],projection='3d') #Indicate a 3D plot 
@@ -423,10 +423,17 @@ class Frame(object):
             fig.colorbar(sm) 
 
         #Plot members
-        for _,mbr in self.Members.items():  
+        for name,mbr in self.Members.items():  
             nNode_pos = mbr.nNode.pos().tolist()
             pNode_pos = mbr.pNode.pos().tolist()
+
             axes.plot3D(*zip(nNode_pos, pNode_pos),'b') #Plot 3D member
+
+            #plot member__
+            if showMemberName:
+                dx, dy, dz
+                text_pos = (mbr.nNode.pos() + (mbr.pNode.pos() - mbr.nNode.pos())/2 + np.array([dx,dy,dz])).tolist()
+                axes.text(*text_pos, name, fontsize=16)
 
             #plot member point forces
             for mLoad in filter(lambda load: type(load) == MemberPtForce ,mbr.ptLoads):
@@ -478,8 +485,12 @@ class Frame(object):
             if node.z < minZ:
                 minZ = node.z
 
-            axes.plot3D([node.x],[node.y],[node.z],'bo',ms=6) #Plot 3D node
-            axes.text(node.x+dx, node.y+dy, node.z+dz, name, fontsize=16) #Add node label
+            # plot 3d Node
+            axes.plot3D([node.x],[node.y],[node.z],'bo',ms=6)
+
+            if showNodeName:
+                # add node label
+                axes.text(node.x+dx, node.y+dy, node.z+dz, name, fontsize=16)
 
             #plot deformed node
             if deformed:
