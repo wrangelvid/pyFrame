@@ -431,7 +431,6 @@ class Frame(object):
 
             #plot member__
             if showMemberName:
-                dx, dy, dz
                 text_pos = (mbr.nNode.pos() + (mbr.pNode.pos() - mbr.nNode.pos())/2 + np.array([dx,dy,dz])).tolist()
                 axes.text(*text_pos, name, fontsize=16)
 

@@ -1,6 +1,7 @@
 import numpy as np
 from math import isclose
 from pyFrame.Loads import MemberPtForce, MemberPtMoment
+from matplotlib import pyplot as plt
 
 class Member(object):
     def __init__(self, Name, nNode, pNode, E, G, J, Iy,Iz, A):
@@ -414,3 +415,71 @@ class Member(object):
             compute global end force vector
         """
         return np.linalg.inv(self.R)@self.Fl
+
+    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
+    
+        fig = plt.figure() 
+        axes = fig.add_axes([0.1,0.1,3,3],projection='3d') #Indicate a 3D plot 
+        axes.view_init(elevation, rotation) #Set the viewing angle of the 3D plot
+
+        #Set offset distance for node label
+        dx = label_offset #x offset for node label
+        dy = label_offset #y offset for node label
+        dz = label_offset #z offset for node label
+
+        #Provide space/margin around structure
+        x_margin = xMargin #x-axis margin
+        y_margin = yMargin #y-axis margin
+        z_margin = zMargin #z-axis margin
+
+        #everything is plotted in local coordinates 
+
+        #plot nodes in local coordinates
+        axes.plot3D([0],[0],[0],'bo',ms=6) #negative node
+        axes.text(-dx, dy, dz, self.nNode.Name, fontsize=16)
+
+        axes.plot3D([self.L],[0],[0],'bo',ms=6) #positve node
+        axes.text(self.L + dx, dy, dz, self.pNode.Name, fontsize=16)
+
+        #plot member
+        axes.plot3D(*zip([0,0,0], [self.L,0,0]),'b')
+        axes.text(*[self.L/2,dy,dz], self.Name, fontsize=16)
+
+        #plot member point forces
+        for mLoad in filter(lambda load: type(load) == MemberPtForce ,self.ptLoads):
+            mag = np.sum(np.square(mLoad.vector().T))**0.5
+            #axes.quiver(*[mLoad.x,0,0],*mLoad.vector().tolist(), length=0.5, normalize=True, pivot='tip')
+
+        #plot member local end forces
+        #TODO show moments
+        nFl = self.Fl[:3,0].T*np.eye(3)
+        pFl = self.Fl[9:,0].T*np.eye(3)
+
+        axes.quiver(*[0,0,0],*nFl[:,0], length=0.1, normalize=True, pivot='tip', colors='r')
+        axes.quiver(*[0,0,0],*nFl[:,1], length=0.1, normalize=True, pivot='tip', colors='r')
+        axes.quiver(*[0,0,0],*nFl[:,2], length=0.1, normalize=True, pivot='tip', colors='r')
+
+        axes.quiver(*[self.L,0,0],*pFl[:,0], length=0.1, normalize=True, pivot='tip', colors='r')
+        axes.quiver(*[self.L,0,0],*pFl[:,1], length=0.1, normalize=True, pivot='tip', colors='r')
+        axes.quiver(*[self.L,0,0],*pFl[:,2], length=0.1, normalize=True, pivot='tip', colors='r')
+
+
+        if deformed:
+            ndeformation = xFac*self.Ul[:3,0]
+            pdeformation = xFac*self.Ul[6:9 ,0]
+            nNode_pos = (np.array([0,0,0]) + ndeformation).tolist()
+            pNode_pos = (np.array([self.L,0,0]) + pdeformation).tolist()
+            axes.plot3D(*zip(nNode_pos,pNode_pos),'r')
+        
+
+        axes.set_xlim([-x_margin,self.L+x_margin])
+        axes.set_ylim([-y_margin,y_margin])
+        axes.set_zlim([0,z_margin])
+
+        axes.set_xlabel('X-coordinate (m)')
+        axes.set_ylabel('Y-coordinate (m)')
+        axes.set_zlabel('Z-coordinate (m)')
+        axes.set_title(f'Beam {self.L}')
+ 
+        axes.grid()
+        plt.show()
