@@ -296,11 +296,11 @@ class Frame(object):
             U1 contains the unknown displacements 
             U2 contains the prescribed support movements/rotations
 
-            PE1 Nodal force Vector 
-            PE2 Nodal force Vector
+            PE1 contains prescribed joint loads
+            PE2 contains unkown reactants
 
-            PI1 contains prescribed joint loads
-            PI2 contains unkown reactants
+            PI1 nodal fixed end reaction vector
+            PI2 nodal fixed end reaction vector
 
             K is the global stiffness Matrix, which is partioned according to known and unkown elements
             
@@ -330,6 +330,9 @@ class Frame(object):
 
         #Calculate the unknown displacements U1
         U1 = np.linalg.inv(K11)@(PE1 - K12@U2 - PI1)
+
+        #calculate unkown reactants reactants
+        PE2 =  K21@(U1[:,:24]) + K22@U2 + PI2
 
         #build node_id to node_name map to save computation
         nID_to_nName = dict(map(lambda item: (item[1].ID, item[0]), self.Nodes.items()))
