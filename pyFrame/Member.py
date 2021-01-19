@@ -1,5 +1,6 @@
 import numpy as np
 from math import isclose
+from pyFrame.Loads import MemberPtForce, MemberPtMoment
 
 class Member(object):
     def __init__(self, Name, nNode, pNode, E, G, J, Iy,Iz, A):
@@ -61,6 +62,9 @@ class Member(object):
         #stiffness matrix 
         self._Kl_unc = None
         self._Kl = None
+
+        #initilize member specific loads
+        self.ptLoads = []
         
     @property
     def L(self):
@@ -111,8 +115,65 @@ class Member(object):
         
         K = self.R.T@self.Kl@self.R
 
-        return self._partition(K)
+        KAA = K[:6,:6]
+        KAB = K[:6,6:]
+        KBA = K[6:,:6]
+        KBB = K[6:,6:]
+        return KAA, KAB, KBA, KBB
+
+    @property
+    def Ul(self):
+        """
+            local displacement vector
+        """
+        Ul = np.zeros((12,1))
+        #retrieve displacements of negative node
+        Ul[0,0] = self.nNode.Ux 
+        Ul[1,0] = self.nNode.Uy 
+        Ul[2,0] = self.nNode.Uz 
+        Ul[3,0] = self.nNode.Rx 
+        Ul[4,0] = self.nNode.Ry 
+        Ul[5,0] = self.nNode.Rz 
+
+        #retrieve displacements of positve node
+        Ul[6,0] = self.pNode.Ux 
+        Ul[7,0] = self.pNode.Uy 
+        Ul[8,0] = self.pNode.Uz 
+        Ul[9,0] = self.pNode.Rx 
+        Ul[10,0] = self.pNode.Ry 
+        Ul[11,0] = self.pNode.Rz 
+        return Ul
+
+    @property
+    def Ug(self):
+        """
+            global displacement vector
+        """
+        return self.R@self.Ul
+
+    @property
+    def PIl_unc(self):
+        """
+            uncondensed local force vector due to meber fixed end action
+        """
+        return self._compute_PIl_unc()
     
+    
+    @property
+    def PIl(self):
+        """
+            condensed local force vector due to meber fixed end action
+        """
+        
+        return self._compute_PIl()
+    
+    @property
+    def PIg(self):
+        """
+            global force vector due to meber fixed end action
+        """
+        return np.linalg.inv(self.R)@self.PIl
+
     def _partition(self, m):
         """
             Partition matrixes according to releases 
@@ -125,13 +186,19 @@ class Member(object):
                 released_idx.append(idx)
             else:
                 unreleased_idx.append(idx)
-       
-        #partition matrix 
-        m11 = m[unreleased_idx, :][:, unreleased_idx]
-        m12 = m[unreleased_idx, :][:, released_idx]
-        m21 = m[released_idx, :][:, unreleased_idx]
-        m22 = m[released_idx, :][:, released_idx]
-        return m11, m12, m21, m22 
+
+        if  m.shape[1] ==1:
+            #matrix is a vector
+            v1 = m[unreleased_idx,:]
+            v2 = m[released_idx,:]
+            return v1, v2
+        else:
+            #partition matrix 
+            m11 = m[unreleased_idx, :][:, unreleased_idx]
+            m12 = m[unreleased_idx, :][:, released_idx]
+            m21 = m[released_idx, :][:, unreleased_idx]
+            m22 = m[released_idx, :][:, released_idx]
+            return m11, m12, m21, m22 
 
 
     def _compute_L(self):
@@ -163,36 +230,26 @@ class Member(object):
 
         else:
             # Members neither vertical or horizontal
+            # Find the projection of x on the global Z axis
+            proj = [0, 0, pZ-nZ]
 
-            # Find the projection of x on the global XZ plane
-            proj = [pX-nX, 0, pZ-nZ]
-
-            if pY > nY:
-                z = np.cross(proj, x)
+            if pZ > nZ:
+                y = np.cross(proj, x)
             else:
-                z = np.cross(x, proj)
+                y = np.cross(x, proj)
 
-            # make z unit vector
-            z = z / np.linalg.norm(z)
-
-            # Find the direction cosines for the local y-axis
-            y = np.cross(z, x)
+            # make y unit vector
             y = y / np.linalg.norm(y)
 
-        
+            # Find the direction cosines for the local z-axis
+            z = np.cross(x,y)
+
+            z = z / np.linalg.norm(z)
+       
         # the direction cosine matrix
         dirCos = np.array([x, y, z])
-        transMatrix = np.zeros((12, 12))
-        transMatrix[0:3, 0:3] = dirCos
-        transMatrix[3:6, 3:6] = dirCos
-        transMatrix[6:9, 6:9] = dirCos
-        transMatrix[9:12, 9:12] = dirCos
-        
-        return transMatrix
-        #tmp = np.concatenate((dirCos,dirCos),axis=1)
-        #return np.concatenate((tmp,tmp), axis=0)
- 
-    
+        return np.kron(np.eye(4),dirCos)
+   
     def _compute_Kl_unc(self):
         E = self.E
         G = self.G
@@ -259,3 +316,70 @@ class Member(object):
                 Kl = np.insert(Kl, idx, 0, axis = 1)
 
         return Kl
+
+    def _compute_PIl_unc(self):
+        '''
+            uncondensed local nodal force vector due to member fixed end actions 
+        '''
+
+        PIl = np.zeros((12,1))
+        L = self.L 
+
+        for mPtLoad in self.ptLoads:
+            nX = mPtLoad.x
+            pX = L - nX
+            if type(mPtLoad) == MemberPtForce:
+                
+                #negative end
+                PIl[0,0]  += -mPtLoad.Fx*pX/L #axial load
+                PIl[1,0]  += -mPtLoad.Fy*pX**2*(L+2*nX)/L**3
+                PIl[2,0]  += -mPtLoad.Fz*pX**2*(L+2*nX)/L**3
+                PIl[4,0]  +=  mPtLoad.Fz*pX**2*nX/L**2
+                PIl[5,0]  += -mPtLoad.Fy*pX**2*nX/L**2
+
+                #positve end
+                PIl[6,0]  += -mPtLoad.Fx*nX/L #axial load
+                PIl[7,0]  += -mPtLoad.Fy*nX**2*(L+2*pX)/L**3
+                PIl[8,0]  += -mPtLoad.Fz*nX**2*(L+2*pX)/L**3
+                PIl[10,0] += -mPtLoad.Fz*nX**2*pX/L**2
+                PIl[11,0] +=  mPtLoad.Fy*nX**2*pX/L**2
+
+            if type(mPtLoad) == MemberPtMoment:
+                
+                #negative end
+                PIl[1,0]  +=  mPtLoad.Mz*6*nX*pX/L**3 
+                PIl[2,0]  += -mPtLoad.My*6*nX*pX/L**3
+                PIl[3,0]  += -mPtLoad.Mx*pX/L # Torque
+                PIl[4,0]  +=  mPtLoad.My*pX*(2*nX-pX)/L**2 
+                PIl[5,0]  +=  mPtLoad.Mz*pX*(2*nX-pX)/L**2 
+
+                #positve end
+                PIl[7,0]  += -mPtLoad.Mz*6*pX*nX/L**3
+                PIl[8,0]  +=  mPtLoad.My*6*pX*nX/L**3
+                PIl[9,0]  += -mPtLoad.Mx*nX/L # Torque
+                PIl[10,0] +=  mPtLoad.My*nX*(2*pX-nX)/L**2
+                PIl[11,0] +=  mPtLoad.Mz*nX*(2*pX-nX)/L**2
+            
+        return PIl
+
+
+    def _compute_PIl(self):
+        '''
+            condensed local nodal force vector due to member fixed end actions 
+        '''
+        
+        # Partition the local stiffness matrix
+        KlAA_unc,KlAB_unc,KlBA_unc,KlBB_unc = self._partition(self.Kl_unc)
+        #partition internal nodal forces (fixed end reactions)
+        PIl1_unc, PIl2_unc = self._partition(self.PIl_unc)
+        
+        #condense vector
+        PIl = PIl1_unc - (KlAB_unc@np.linalg.inv(KlBB_unc))@PIl2_unc
+        
+        #For each released DoF we add zero row at the appropiate index
+        for idx, release in list(enumerate(self.nReleases)) + list(enumerate(self.pReleases, start=6)):
+            if release:
+                PIl = np.insert(PIl, idx, 0, axis = 0)
+
+        return PIl
+        

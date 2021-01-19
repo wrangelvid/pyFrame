@@ -1,7 +1,7 @@
 import numpy as np
 from pyFrame.Node import Node
 from pyFrame.Member import Member 
-from pyFrame.Loads import NodalForce, NodalMoment
+from pyFrame.Loads import NodalForce, NodalMoment, MemberPtForce, MemberPtMoment
 from matplotlib import pyplot as plt
 
 class Frame(object):
@@ -101,12 +101,47 @@ class Frame(object):
         self.NodalLoads.append(nForce)
 
 
-    def addNodeMoment(self, Node_name, Force_name = None, Mx = 0, My = 0, Mz = 0):
+    def addNodeMoment(self, Node_name, Moment_name = None, Mx = 0, My = 0, Mz = 0):
         #get node
         node = self.Nodes[Node_name] 
         #initilze Nodal Moment
-        nMoment = NodalMoment(node, Force_name, Mx, My, Mz)
+        nMoment = NodalMoment(node, Moment_name, Mx, My, Mz)
         self.NodalLoads.append(nMoment)
+
+    def addMemberPtForce(self, Member_name, x, Force_name = None, Fx = 0, Fy = 0, Fz = 0):
+        """
+            add a point force to a members location x,
+            where x is the distance away from the negative node.
+            The force is in the members local coordinates
+
+        """
+        #get Member
+        member = self.Members[Member_name] 
+
+        #check if x is in bound
+        if x < 0 or x > member.L:
+            raise Exception(f'Position x: {x} is out of bound [{0}, {member.L}]')
+
+        #initilze Member point Force
+        mPtForce = MemberPtForce(member, x, Force_name, Fx, Fy, Fz)
+        member.ptLoads.append(mPtForce)
+
+    def addMemberPtMoment(self, Member_name, x, Moment_name = None, Mx = 0, My = 0, Mz = 0):
+        """
+            add a point moment to a members location x,
+            where x is the distance away from the negative node.
+            The force is in the members local coordinates
+        """
+        #get Member 
+        member = self.Members[Member_name] 
+
+        #check if x is in bound
+        if x < 0 or x > member.L:
+            raise Exception(f'Position x: {x} is out of bound [{0}, {member.L}]')
+
+        #initilze Nodal Moment
+        mPtMoment = MemberPtMoment(member, x, Moment_name, Mx, My, Mz)
+        member.ptLoads.append(mPtMoment)
 
 
     
@@ -232,6 +267,20 @@ class Frame(object):
             PE[base_idx: base_idx+3] += nLoad.vector() 
         
         return PE
+
+    def _compute_PI(self):
+        #nodal force vector due to fixed end actions
+        PI = np.zeros((len(self.Nodes)*6,1))
+
+        for _,mbr in self.Members.items():
+            mbrPI = mbr.PIg
+            nBase_idx = mbr.nNode.ID*6
+            pBase_idx = mbr.pNode.ID*6
+
+            PI[nBase_idx: nBase_idx +6] += mbrPI[:6,:]   
+            PI[pBase_idx: pBase_idx +6] += mbrPI[6:,:]   
+        
+        return PI
         
     def analyze(self):
         """
@@ -268,12 +317,15 @@ class Frame(object):
         #partition PE
         PE1, PE2 = self.__partition_vec(PE, U1_DoF_idx, U2_DoF_idx)
 
-
+        #get global nodal force vector due to fixed end actions
+        PI = self._compute_PI()
+        #partition PI
+        PI1, PI2 = self.__partition_vec(PI, U1_DoF_idx, U2_DoF_idx)
         
         K11, K12, K21, K22 = self.__partition_Kp(Kp, U1_DoF_idx, U2_DoF_idx)
 
         #Calculate the unknown displacements U1
-        U1 = np.linalg.inv(K11)@(PE1 - K12@U2)# - PI1) TODO implement internal point loads later
+        U1 = np.linalg.inv(K11)@(PE1 - K12@U2 - PI1)
 
         #build node_id to node_name map to save computation
         nID_to_nName = dict(map(lambda item: (item[1].ID, item[0]), self.Nodes.items()))
@@ -324,6 +376,15 @@ class Frame(object):
             pNode_pos = mbr.pNode.pos().tolist()
             axes.plot3D(*zip(nNode_pos, pNode_pos),'b') #Plot 3D member
 
+            #plot member point forces
+            for mLoad in filter(lambda load: type(load) == MemberPtForce ,mbr.ptLoads):
+                mag = np.sum(np.square(mLoad.vector().T))**0.5
+                #transform local force vector to global force vector
+                R_inv = np.linalg.inv(mbr.R)[0:3,0:3]
+                mLoad_force =  (R_inv@mLoad.vector()).tolist()
+                mLoad_position = (R_inv@np.array([mLoad.x,0,0]) + mbr.nNode.pos()).tolist()
+                axes.quiver(*mLoad_position,*mLoad_force, length=0.5, normalize=True, pivot='tip')
+
             #plot deformed members
             #TODO somehow implement rotation
             if deformed:
@@ -365,8 +426,8 @@ class Frame(object):
             if deformed:
                 axes.plot3D([node.x + xFac*node.Ux],[node.y + xFac*node.Uy],[node.z + xFac*node.Uz],'ro',ms=6) #Plot 3D node
         
-        #draw Nodal Froce Vectors
-        for nLoad in self.NodalLoads:
+        #draw Nodal Force Vectors
+        for nLoad in filter(lambda load: type(load) == NodalForce ,self.NodalLoads):
             mag = np.sum(np.square(nLoad.vector().T))**0.5
             axes.quiver([nLoad.Node.x], [nLoad.Node.y], [nLoad.Node.z], [nLoad.Fx], [nLoad.Fy], [nLoad.Fz], length=0.5, normalize=True, pivot='tip')
 
