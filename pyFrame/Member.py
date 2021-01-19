@@ -109,17 +109,11 @@ class Member(object):
     @property
     def Kg(self):
         """
-            paritioned Global Stiffness Matrix
+            Global Stiffness Matrix
         """
         #not storing because we only need to get the global stiffness matrix for the prime stiffness matrix of the frame
         
-        K = self.R.T@self.Kl@self.R
-
-        KAA = K[:6,:6]
-        KAB = K[:6,6:]
-        KBA = K[6:,:6]
-        KBB = K[6:,6:]
-        return KAA, KAB, KBA, KBB
+        return self.R.T@self.Kl@self.R
 
     @property
     def Ul(self):

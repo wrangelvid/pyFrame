@@ -165,7 +165,11 @@ class Frame(object):
         Kp = np.zeros((max_n,max_n))
         for _,mbr in self.Members.items():
             #get global partitioned member stiffness matrix
-            KAA, KAB, KBA, KBB = mbr.Kg
+            K = mbr.Kg
+            KAA = K[:6,:6]
+            KAB = K[:6,6:]
+            KBA = K[6:,:6]
+            KBB = K[6:,6:]
 
             n = mbr.nNode.ID*6
             p = mbr.pNode.ID*6
