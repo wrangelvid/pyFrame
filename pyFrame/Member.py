@@ -160,6 +160,23 @@ class Member(object):
         """
         
         return self._compute_PIl()
+
+    @property
+    def Fl(self):
+        """
+           local force vector due to meber fixed end action
+        """
+        return self._compute_Fl()
+    
+    
+    @property
+    def Fg(self):
+        """
+            condensed local force vector due to meber fixed end action
+        """
+        
+        return self._compute_Fg()
+    
     
     @property
     def PIg(self):
@@ -377,3 +394,14 @@ class Member(object):
 
         return PIl
         
+    def _compute_Fl(self):
+        """
+            compute local end force vector
+        """
+        return self.kl@self.Ul + self.PIl
+    
+    def _compute_Fg(self):
+        """
+            compute global end force vector
+        """
+        return np.linalg.inv(self.R)@self.Fl

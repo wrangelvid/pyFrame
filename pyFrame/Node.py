@@ -17,6 +17,18 @@ class Node(object):
         self.Ry = None
         self.Rz = None
 
+        #global force reactions
+        self.Fx = None
+        self.Fy = None
+        self.Fz = None
+
+        #global moment reactions 
+        self.Mx = None
+        self.My = None
+        self.Mz = None
+
+
+
         #define which displacement/rotation relations are immutable due to support condition
         self.support = [False for i in range(6)] 
         

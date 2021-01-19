@@ -344,21 +344,54 @@ class Frame(object):
             
             if remainder == 0:
                 node.Ux = U1[idx,0]
+                node.Fx = PE2[idx,0]
 
             if remainder == 1:
                 node.Uy = U1[idx,0]
+                node.Fy = PE2[idx,0]
 
             if remainder == 2:
                 node.Uz = U1[idx,0]
+                node.Fy = PE2[idx,0]
             
             if remainder == 3:
                 node.Rx = U1[idx,0]
+                node.Mx = PE2[idx,0]
 
             if remainder == 4:
                 node.Ry = U1[idx,0]
+                node.My = PE2[idx,0]
 
             if remainder == 5:
                 node.Rz = U1[idx,0]
+                node.Mz = PE2[idx,0]
+
+        #save remaining known reactions due to nodal loads
+        for idx, DoF_idx in enumerate(U2_DoF_idx):
+            remainder = DoF_idx % 6
+            id = (DoF_idx - remainder)/6
+            #access node 
+            node = self.Nodes[nID_to_nName[id]]
+            
+            if remainder == 0:
+                node.Fx = PE1[idx,0]
+
+            if remainder == 1:
+                node.Fy = PE1[idx,0]
+
+            if remainder == 2:
+                node.Fy = PE1[idx,0]
+            
+            if remainder == 3:
+                node.Mx = PE1[idx,0]
+
+            if remainder == 4:
+                node.My = PE1[idx,0]
+
+            if remainder == 5:
+                node.Mz = PE1[idx,0]
+            
+            
 
 
     def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
