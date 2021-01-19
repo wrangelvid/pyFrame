@@ -3,6 +3,7 @@ from pyFrame.Node import Node
 from pyFrame.Member import Member 
 from pyFrame.Loads import NodalForce, NodalMoment, MemberPtForce, MemberPtMoment
 from matplotlib import pyplot as plt
+import matplotlib.colors
 
 class Frame(object):
     def __init__(self):
@@ -391,6 +392,9 @@ class Frame(object):
             if remainder == 5:
                 node.Mz = PE2[idx,0]
 
+        #compute and automatically store all member end forces
+        for _, mbr in self.Members.items():
+            mbr.Fg
 
     def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, reactions=True, xFac = 1.0): 
     
@@ -407,6 +411,16 @@ class Frame(object):
         x_margin = xMargin #x-axis margin
         y_margin = yMargin #y-axis margin
         z_margin = zMargin #z-axis margin
+
+        if deformed: 
+            #Create color scale for member forces
+            cmap = plt.cm.seismic #Define the color scale to use (note _r reverses colourmap)
+            axialForces = [mbr.Fl[0,0] for mbr in self.Members.values()]
+            colorNorm = matplotlib.colors.TwoSlopeNorm(vmin=min(axialForces), vmax=max(axialForces), vcenter=0.0) # Normalise colour scale to limits of my data
+
+            #show colorbar
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=colorNorm)
+            fig.colorbar(sm) 
 
         #Plot members
         for _,mbr in self.Members.items():  
@@ -430,7 +444,13 @@ class Frame(object):
                 pdeformation = xFac*np.array([mbr.pNode.Ux, mbr.pNode.Uy, mbr.pNode.Uz])
                 nNode_pos = (mbr.nNode.pos() + ndeformation).tolist()
                 pNode_pos = (mbr.pNode.pos() + pdeformation).tolist()
-                axes.plot3D(*zip(nNode_pos, pNode_pos),'r') #Plot 3D member
+
+                axialLoad = mbr.Fl[0,0]
+
+                if(abs(axialLoad)>0.001):         
+                    axes.plot3D(*zip(nNode_pos, pNode_pos),color=cmap(colorNorm(axialLoad))) #Plot 3D member
+                else:
+                    axes.plot3D(*zip(nNode_pos, pNode_pos), 'grey', linestyle='--') #zero force member
 
 
 
@@ -496,18 +516,24 @@ class Frame(object):
             # reset unkown displacements/rotations 
             if not node.support[0]:
                 node.Ux = None
+                node.Fx = None
 
             if not node.support[1]:
                 node.Uy = None
+                node.Fy = None
 
             if not node.support[2]:
                 node.Uz = None
+                node.Fz = None
 
             if not node.support[3]:
                 node.Rx = None
+                node.Mx = None
 
             if not node.support[4]:
                 node.Ry = None
+                node.My = None
 
             if not node.support[5]:
                 node.Rz = None
+                node.Mz = None

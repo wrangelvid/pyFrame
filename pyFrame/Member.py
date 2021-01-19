@@ -65,6 +65,10 @@ class Member(object):
 
         #initilize member specific loads
         self.ptLoads = []
+
+        #store Member Forces
+        self._Fl = None
+        self._Fg = None
         
     @property
     def L(self):
@@ -165,8 +169,11 @@ class Member(object):
     def Fl(self):
         """
            local force vector due to meber fixed end action
-        """
-        return self._compute_Fl()
+        """           
+        if self._Fl is None:
+            self._Fl = self._compute_Fl()
+
+        return self._Fl
     
     
     @property
@@ -174,8 +181,10 @@ class Member(object):
         """
             condensed local force vector due to meber fixed end action
         """
-        
-        return self._compute_Fg()
+        if self._Fg is None:
+            self._Fg = self._compute_Fg()
+
+        return self._Fg
     
     
     @property
