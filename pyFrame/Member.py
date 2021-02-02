@@ -1,6 +1,7 @@
 import numpy as np
 from math import isclose
 from pyFrame.Loads import MemberPtForce, MemberPtMoment
+from pyFrame.BeamSegment import BeamSeg
 from matplotlib import pyplot as plt
 
 class Member(object):
@@ -70,6 +71,9 @@ class Member(object):
         #store Member Forces
         self._Fl = None
         self._Fg = None
+
+        #store beam segments
+        self.Segments = {}
         
     @property
     def L(self):
@@ -161,7 +165,7 @@ class Member(object):
     @property
     def PIl(self):
         """
-            condensed local force vector due to meber fixed end action
+            condensed local force vector due to member fixed end action
         """
         
         return self._compute_PIl()
@@ -169,7 +173,7 @@ class Member(object):
     @property
     def Fl(self):
         """
-           local force vector due to meber fixed end action
+           local force vector due to member fixed end action
         """           
         if self._Fl is None:
             self._Fl = self._compute_Fl()
@@ -180,7 +184,7 @@ class Member(object):
     @property
     def Fg(self):
         """
-            condensed local force vector due to meber fixed end action
+            condensed local force vector due to member fixed end action
         """
         if self._Fg is None:
             self._Fg = self._compute_Fg()
@@ -416,6 +420,88 @@ class Member(object):
         """
         return np.linalg.inv(self.R)@self.Fl
 
+    def _segmentate(self):
+        """
+            Segments the member into continues sub segments 
+        """
+        #clear current segments 
+        self.Segments = {}
+        #all locatations for discontinuities 
+        discontinuities = sorted(set([0, self.L] + [ptLoad.x for ptLoad in self.ptLoads]))
+
+        for x_start, x_end in zip(discontinuities[:-1], discontinuities[1:]):
+            self.Segments['Z'] = self.Segments.get('Z', []) + [BeamSeg('Z', x_start, x_end, self.E*self.A, self.E*self.Iy)]
+            self.Segments['Y'] = self.Segments.get('Y', []) + [BeamSeg('Y', x_start, x_end, self.E*self.A, self.E*self.Iz)]
+            self.Segments['X'] = self.Segments.get('X', []) + [BeamSeg('X', x_start, x_end, self.E*self.A)]
+        
+ 
+    
+        PIl = self.PIl_unc #uncondensed local force vecter duje to member fixed end action
+        Fl = self.Fl      #local force vectro due to member fixed end action
+        Ul = self.Ul      #local displacement vector
+    
+        #intilize first members 
+        m1z = Fl[5, 0]       # local z-axis moment at start of member
+        m2z = Fl[11, 0]      # local z-axis moment at end of member
+        m1y = -Fl[4, 0]      # local y-axis moment at start of member
+        m2y = -Fl[10, 0]     # local y-axis moment at end of member
+        fem1z = PIl[5, 0]   # local z-axis fixed end moment at start of member
+        fem2z = PIl[11, 0]  # local z-axis fixed end moment at end of member
+        fem1y = -PIl[4, 0]  # local y-axis fixed end moment at start of member
+        fem2y = -PIl[10, 0] # local y-axis fixed end moment at end of member
+        delta1y = Ul[1, 0]   # local y displacement at start of member
+        delta2y = Ul[7, 0]   # local y displacement at end of member
+        delta1z = Ul[2, 0]   # local z displacement at start of member
+        delta2z = Ul[8, 0]   # local z displacement at end of member
+
+        self.Segments['Z'][0].delta1 = delta1y
+        self.Segments['Y'][0].delta1 = delta1z
+        self.Segments['Z'][0].theta1 = 1/3*((m1z - fem1z)*self.L/(self.E*self.Iz) - (m2z - fem2z)*self.L/(2*self.E*self.Iz) + 3*(delta2y - delta1y)/self.L)
+        self.Segments['Y'][0].theta1 = -1/3*((m1y - fem1y)*self.L/(self.E*self.Iy) - (m2y - fem2y)*self.L/(2*self.E*self.Iy) + 3*(delta2z - delta1z)/self.L)
+
+        # Add the axial deflection at the start of the member
+        self.Segments['Z'][0].delta_x1 = Ul[0, 0]
+        self.Segments['Y'][0].delta_x1 = Ul[0, 0]
+        self.Segments['X'][0].delta_x1 = Ul[0, 0]
+
+        for i in range(len(self.Segments['Z'])):
+            
+            # Get the starting point of the segment
+            x = self.Segments['Z'][i].x1
+
+            # Initialize the slope and displacement at the start of the segment
+            if i > 0: # The first segment has already been initialized
+                self.Segments['Z'][i].theta1 = self.Segments['Z'][i-1].Slope()
+                self.Segments['Z'][i].delta1 = self.Segments['Z'][i-1].Deflection()
+                self.Segments['Z'][i].delta_x1 = self.Segments['Z'][i-1].AxialDeflection()
+                self.Segments['Y'][i].theta1 = self.Segments['Y'][i-1].Slope()
+                self.Segments['Y'][i].delta1 = self.Segments['Y'][i-1].Deflection()
+                self.Segments['Y'][i].delta_x1 = self.Segments['Y'][i-1].AxialDeflection()
+                
+            # Add the effects of the beam end forces to the segment
+            self.Segments['Z'][i].P1 = Fl[0, 0]
+            self.Segments['Z'][i].S1 = Fl[1, 0]
+            self.Segments['Z'][i].M1 = Fl[5, 0] - Fl[1, 0]*x
+            self.Segments['Y'][i].P1 = Fl[0, 0]
+            self.Segments['Y'][i].S1 = Fl[2, 0]
+            self.Segments['Y'][i].M1 = Fl[4, 0] + Fl[2, 0]*x
+            self.Segments['X'][i].T1 = Fl[3, 0]
+            
+            # Add effects of point loads occuring prior to this segment
+            for mPtLoad in self.ptLoads:
+                if round(mPtLoad.x,10) <= round(x,10):
+                    if type(mPtLoad) == MemberPtForce:
+                        self.Segments['Z'][i].P1 += mPtLoad.Fx
+                        self.Segments['Z'][i].S1 += mPtLoad.Fy
+                        self.Segments['Z'][i].M1 -= mPtLoad.Fy*(x - mPtLoad.x)
+                        self.Segments['Y'][i].S1 += mPtLoad.Fz
+                        self.Segments['Y'][i].M1 += mPtLoad.Fz*(x - mPtLoad.x)
+
+                    if type(mPtLoad) == MemberPtMoment:
+                        self.Segments['X'][i].T1 += mPtLoad.Mx   
+                        self.Segments['Y'][i].M1 += mPtLoad.My
+                        self.Segments['Z'][i].M1 += mPtLoad.Mz
+            
     def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
     
         fig = plt.figure() 

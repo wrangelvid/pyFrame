@@ -185,6 +185,7 @@ class Frame(object):
     def __partition_Kp(self, Kp, U1_DoF_idx, U2_DoF_idx):
         '''
         partition primary stiffness matrix into submatrices b/c of DoF indices 
+        blueberry
         '''
         #partition matrix
         K11 = Kp[U1_DoF_idx, :][:, U1_DoF_idx]
@@ -333,7 +334,7 @@ class Frame(object):
         U1 = np.linalg.inv(K11)@(PE1 - K12@U2 - PI1)
 
         #calculate unkown reactants reactants
-        PE2 =  K21@(U1[:,:24]) + K22@U2 + PI2
+        PE2 =  K21@(U1[:,0]) + K22@U2 + PI2
 
         #build node_id to node_name map to save computation
         nID_to_nName = dict(map(lambda item: (item[1].ID, item[0]), self.Nodes.items()))
@@ -509,7 +510,7 @@ class Frame(object):
         #Set axis limits to provide margin around structure
         axes.set_xlim([minX-x_margin,maxX+x_margin])
         axes.set_ylim([minY-y_margin,maxY+y_margin])
-        axes.set_zlim([minZ,maxZ+z_margin])
+        axes.set_zlim([min([0,minZ]),maxZ+z_margin])
 
         axes.set_xlabel('X-coordinate (m)')
         axes.set_ylabel('Y-coordinate (m)')
