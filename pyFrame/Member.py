@@ -501,7 +501,22 @@ class Member(object):
                         self.Segments['X'][i].T1 += mPtLoad.Mx   
                         self.Segments['Y'][i].M1 += mPtLoad.My
                         self.Segments['Z'][i].M1 += mPtLoad.Mz
-            
+    
+    def Dl(self, x):
+        """
+            returns local deflection Vector at position x
+        """
+        #determine segment idx 
+        idx = min(filter(lambda pair: pair[1] >=0, zip(range(len(self.Segments['Z'])), map(lambda seg: x-seg.x1, self.Segments['Z']))), key=lambda pair: pair[1])[0]
+
+        dx = self.Segments['Z'][idx].AxialDeflection(x - self.Segments['Z'][idx].x1)
+
+        dy = self.Segments['Z'][idx].Deflection(x - self.Segments['Z'][idx].x1)
+
+        dz = self.Segments['Y'][idx].Deflection(x - self.Segments['Y'][idx].x1)
+
+        return np.array([dx,dy,dz])
+    
     def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
     
         fig = plt.figure() 
@@ -534,7 +549,7 @@ class Member(object):
         #plot member point forces
         for mLoad in filter(lambda load: type(load) == MemberPtForce ,self.ptLoads):
             mag = np.sum(np.square(mLoad.vector().T))**0.5
-            #axes.quiver(*[mLoad.x,0,0],*mLoad.vector().tolist(), length=0.5, normalize=True, pivot='tip')
+            axes.quiver(*[mLoad.x,0,0],*mLoad.vector().tolist(), length=0.1, normalize=True, pivot='tip')
 
         #plot member local end forces
         #TODO show moments

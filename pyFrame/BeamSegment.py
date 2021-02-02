@@ -54,7 +54,10 @@ class BeamSeg(object):
         if x is None:
             x = self.L
         
-        return self.theta1 - (self.M1*x - self.S1*x**2/2)/(self.EI)
+        if self.segType == 'Z':
+            return self.theta1 - (self.M1*x - self.S1*x**2/2)/(self.EI)
+        else:
+            return self.theta1 - (self.M1*x + self.S1*x**2/2)/(self.EI)
     
     def Deflection(self, x = None):
         """
@@ -63,8 +66,11 @@ class BeamSeg(object):
 
         if x is None:
             x = self.L
-       
-        return self.delta1 + self.theta1*x - self.M1*x**2/(2*self.EI) + self.S1*x**3/(6*self.EI) 
+
+        if self.segType == 'Z': 
+            return self.delta1 + self.theta1*x - self.M1*x**2/(2*self.EI) + self.S1*x**3/(6*self.EI) 
+        else:
+            return self.delta1 - self.theta1*x + self.M1*x**2/(2*self.EI) + self.S1*x**3/(6*self.EI) 
 
 
 
@@ -72,6 +78,7 @@ class BeamSeg(object):
     def AxialDeflection(self, x = None):
         """
             Returns the axial deflection at a location on the segment
+            The x is on the local segments coordinates and does not correspond to the members x
         """
         if x is None:
             x = self.L

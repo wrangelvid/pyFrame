@@ -393,11 +393,12 @@ class Frame(object):
             if remainder == 5:
                 node.Mz = PE2[idx,0]
 
-        #compute and automatically store all member end forces
+        #compute and automatically store all member end forces and generate segmentations
         for _, mbr in self.Members.items():
             mbr.Fg
+            mbr._segmentate()
 
-    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, showNodeName = True, showMemberName = True, deformed = True, reactions=True, xFac = 1.0): 
+    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, showNodeName = True, showMemberName = True, deformed = True, reactions=True, xFac = 1.0, accuracy = 20): 
     
         fig = plt.figure() 
         axes = fig.add_axes([0.1,0.1,3,3],projection='3d') #Indicate a 3D plot 
@@ -425,12 +426,14 @@ class Frame(object):
 
         #Plot members
         for name,mbr in self.Members.items():  
-            nNode_pos = mbr.nNode.pos().tolist()
-            pNode_pos = mbr.pNode.pos().tolist()
+            nNode_pos = mbr.nNode.pos()
+            pNode_pos = mbr.pNode.pos()
 
-            axes.plot3D(*zip(nNode_pos, pNode_pos),'b') #Plot 3D member
+            mbrPoints = np.linspace(nNode_pos, pNode_pos, accuracy + 1)
 
-            #plot member__
+            axes.plot3D(mbrPoints[:,0], mbrPoints[:,1], mbrPoints[:,2],'b') #Plot 3D member
+
+            #plot member name 
             if showMemberName:
                 text_pos = (mbr.nNode.pos() + (mbr.pNode.pos() - mbr.nNode.pos())/2 + np.array([dx,dy,dz])).tolist()
                 axes.text(*text_pos, name, fontsize=16)
@@ -439,14 +442,15 @@ class Frame(object):
             for mLoad in filter(lambda load: type(load) == MemberPtForce ,mbr.ptLoads):
                 mag = np.sum(np.square(mLoad.vector().T))**0.5
                 #transform local force vector to global force vector
-                R_inv = np.linalg.inv(mbr.R)[0:3,0:3]
-                mLoad_force =  (R_inv@mLoad.vector()).tolist()
-                mLoad_position = (R_inv@np.array([mLoad.x,0,0]) + mbr.nNode.pos()).tolist()
+                R = mbr.R[:3,:3].T
+                mLoad_force =  (R@mLoad.vector()).tolist()
+                mLoad_position = (R@np.array([mLoad.x,0,0]) + mbr.nNode.pos()).tolist()
                 axes.quiver(*mLoad_position,*mLoad_force, length=0.5, normalize=True, pivot='tip')
 
             #plot deformed members
             #TODO somehow implement rotation
             if deformed:
+                """
                 ndeformation = xFac*np.array([mbr.nNode.Ux, mbr.nNode.Uy, mbr.nNode.Uz])
                 pdeformation = xFac*np.array([mbr.pNode.Ux, mbr.pNode.Uy, mbr.pNode.Uz])
                 nNode_pos = (mbr.nNode.pos() + ndeformation).tolist()
@@ -458,6 +462,19 @@ class Frame(object):
                     axes.plot3D(*zip(nNode_pos, pNode_pos),color=cmap(colorNorm(axialLoad))) #Plot 3D member
                 else:
                     axes.plot3D(*zip(nNode_pos, pNode_pos), 'grey', linestyle='--') #zero force member
+                """
+                R = mbr.R[0:3,0:3].T
+                relative_deformed_mbrPoints =  np.array([R@(xFac*mbr.Dl(mbr.L/accuracy*i)) for i in range(accuracy + 1)])
+                deformed_mbrPoints = mbrPoints + relative_deformed_mbrPoints
+                axes.plot3D(deformed_mbrPoints[:,0], deformed_mbrPoints[:,1], deformed_mbrPoints[:,2],'r') #Plot 3D member
+
+                axialLoad = mbr.Fl[0,0]
+
+                if(abs(axialLoad)>0.001):         
+                    axes.plot3D(deformed_mbrPoints[:,0], deformed_mbrPoints[:,1], deformed_mbrPoints[:,2],color=cmap(colorNorm(axialLoad))) #Plot 3D member
+                else:
+                    axes.plot3D(deformed_mbrPoints[:,0], deformed_mbrPoints[:,1], deformed_mbrPoints[:,2], 'grey', linestyle='--') #Plot 3D member
+ 
 
 
 
