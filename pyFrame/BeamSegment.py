@@ -77,3 +77,30 @@ class BeamSeg(object):
             x = self.L
 
         return self.delta_x1 - 1/self.EA*(self.P1*x)
+
+    def Shear(self, x):
+        """
+            Returns the shear force at a location on the segment
+        """
+        #currently shear is constant since we have no distributed loads
+        return self.S1
+
+    def Moment(self, x):
+        """
+            Returns the moment at a location on the segment
+        """
+        return self.M1 - self.S1*x
+
+    def Axial(self, x):
+        """
+            Returns the axial force at a location on the segment
+        """
+        #currently axial load is constant sine we have no distriubed loads
+        return self.P1
+
+    def Torsion(self):
+        """
+            Returns the torsional moment in the segment.
+        """
+        # Here torsinal moment is constant across the segment
+        return self.T1
