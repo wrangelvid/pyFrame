@@ -1,3 +1,6 @@
+import numpy as np
+from matplotlib import pyplot as plt
+
 class BeamSeg(object):
     def __init__(self, segType,  x1, x2, EA = None, EI = None):
         """
@@ -111,3 +114,143 @@ class BeamSeg(object):
         """
         # Here torsinal moment is constant across the segment
         return self.T1
+
+class Material(object):
+    def __init__(self, E, G):
+        """
+            :param E: Elastic Moduls of Member
+            :type E: float
+            :param G: Shear Moduls of Member
+            :type G: float
+ 
+        """
+        self.E = E
+        self.G = G
+
+
+
+class Crosssection(object):
+    def __init__(self, points):
+        """
+            :param points: list of (y,z) coordinate points describinh a polygon boundary
+            :type points: list of typles
+        local reference frame 
+
+              z
+              |
+              | 
+              |
+              0-------y
+        """
+        self.pts = np.asarray(points)
+        if (self.pts[0] != self.pts[-1]).any():
+            #close polygon
+            self.pts = np.append(self.pts, [self.pts[0]], axis=0)
+
+        self._A = None
+        self._Iy = None
+        self._Iz = None
+        self._J = None
+
+    
+    @property
+    def A(self):
+        """
+            Area of crosssection
+        """
+        if self._A is None:
+            self._A = self._compute_area()
+
+        return self._A
+    
+    @property
+    def centroid(self):
+        """
+            Centroid coordinates
+        """
+        return self._compute_centroid()
+    
+    @property
+    def Iy(self):
+        """
+            Moment of Inertia about the Y axis 
+        """
+        if self._Iy is None:
+            self._Iy, self._Iz, self._J = self._compute_inertia()
+
+        return self._Iy
+
+    @property
+    def Iz(self):
+        """
+            Moment of Inertia about the Z axis
+        """
+        if self._Iz is None:
+            self._Iy, self._Iz, self._J = self._compute_inertia()
+
+        return self._Iz
+    
+    @property
+    def J(self):
+        """
+            Polar Moment of Inertia or Torsinal constant 
+        """
+        if self._J is None:
+            self._Iy, self._Iz, self._J = self._compute_inertia()
+
+        return self._J
+    
+    def _compute_area(self):
+        """
+            determines the area enclosed by the points 
+        """
+        y, z = self.pts[:,0], self.pts[:,1]
+        a = 0.5 * np.sum(y[:-1]*z[1:] - y[1:]*z[:-1])
+
+        return abs(a)
+    
+    def _compute_centroid(self):
+        """
+            returns the centroid coordinates of the given crosssection 
+        """
+        y, z = self.pts[:,0], self.pts[:,1]
+        a = 3 * np.sum(y[:-1]*z[1:] - y[1:]*z[:-1])
+
+        c = y[:-1] * z[1:] - y[1:] * z[:-1]
+        cy = (y[:-1] + y[1:]) * c
+        cy = np.sum(cy) / a
+
+        cz = (z[:-1] + z[1:]) * c
+        cz = np.sum(cz) / a
+
+        return np.array([cy, cz])
+    
+    def _compute_inertia(self):
+        pts_shifted = self.pts - self.centroid 
+        y, z = pts_shifted[:,0], pts_shifted[:,1]
+
+        c = y[:-1] * z[1:] - y[1:] * z[:-1]
+        Iy = c * (z[:-1]**2 + z[:-1]*z[1:] + z[1:]**2)
+        Iy = np.sum(Iy) / 12
+
+        Iz = c * (y[:-1]**2 + y[:-1]*y[1:] + y[1:]**2)
+        Iz = np.sum(Iz) / 12
+
+        return abs(Iy), abs(Iz), abs(Iy) + abs(Iz)
+    
+    
+    def plot(self):
+        """
+        Plots the cross section defined by the input boundary points.
+        """
+        fig = plt.figure()
+        axes = fig.add_subplot(111, xlabel='Y', ylabel='Z', aspect='equal')
+
+        # Plot boundary
+        axes.plot(self.pts[:,0], self.pts[:,1], 'b-')
+
+        # Plot centroid
+        origin = self.centroid
+        axes.plot(origin[0], origin[1], 'go')
+
+        plt.show()

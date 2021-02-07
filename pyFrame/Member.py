@@ -1,11 +1,11 @@
 import numpy as np
 from math import isclose
 from pyFrame.Loads import MemberPtForce, MemberPtMoment
-from pyFrame.BeamSegment import BeamSeg
+from pyFrame.Beam import BeamSeg
 from matplotlib import pyplot as plt
 
 class Member(object):
-    def __init__(self, Name, nNode, pNode, E, G, J, Iy,Iz, A):
+    def __init__(self, Name, nNode, pNode, material, crosssection):
         """
             :param Name: unique member name given by user 
             :type Name: String
@@ -13,18 +13,10 @@ class Member(object):
             :type nNode: Node 
             :param pNode: reference to positve Node attached to member
             :type pNode: Node 
-            :param E: Elastic Moduls of Member
-            :type E: float
-            :param G: Shear Moduls of Member
-            :type G: float
-            :param J: torsional constant
-            :type J: float
-            :param Iy:
-            :type Iy: float
-            :param Iz:
-            :type Iz: float
-            :param A:
-            :type A: float
+            :param material: members material
+            :type material: Material object 
+            :param crosssection: member crossection
+            :type crosssection: Crossection object
 
             
             local reference frame 
@@ -41,12 +33,10 @@ class Member(object):
         self.Name = Name
         self.nNode = nNode
         self.pNode = pNode
-        self.E = E
-        self.G = G
-        self.J = J 
-        self.A = A
-        self.Iy = Iy  
-        self.Iz = Iz  
+        
+        self.material = material
+    
+        self.crosssection = crosssection
 
         #Orientation
         self._L = None #length of Member 
@@ -224,6 +214,30 @@ class Member(object):
             m21 = m[released_idx, :][:, unreleased_idx]
             m22 = m[released_idx, :][:, released_idx]
             return m11, m12, m21, m22 
+    
+    @property
+    def material(self):
+        return self.__material
+
+    @material.setter
+    def material(self, new_material):
+        self.__material = new_material
+        #extract material properties
+        self.E = self.material.E
+        self.G = self.material.G
+    
+    @property
+    def crosssection(self):
+        return self.__crosssection
+
+    @crosssection.setter
+    def crosssection(self, new_crosssection):
+        self.__crosssection = new_crosssection
+        #extract crossection properties
+        self.J = self.crosssection.J 
+        self.A = self.crosssection.A
+        self.Iy = self.crosssection.Iy  
+        self.Iz = self.crosssection.Iz 
 
 
     def _compute_L(self):

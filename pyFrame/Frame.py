@@ -23,7 +23,8 @@ class Frame(object):
         #TODO need to delete all assigned members
         del self.Nodes[Name]
 
-    def addMember(self, Name, nNode_name, pNode_name, E, G, J, Iy,Iz, A):
+    def addMember(self, Name, nNode_name, pNode_name, material, crosssection):
+
         """
             Adding member to frame.
             :param Name: unique member name given by user 
@@ -32,26 +33,17 @@ class Frame(object):
             :type nNode_name: string
             :param pNode_name: name idenfitifer to attech to the positive end of the member
             :type pNode_name: string
-            :param E: Elastic Moduls of Member
-            :type E: float
-            :param G: Shear Moduls of Member
-            :type G: float
-            :param J: torsional constant
-            :type J: float
-            :param Iy:
-            :type Iy: float
-            :param Iz:
-            :type Iz: float
-            :param A:
-            :type A: float
-
+            :param material: members material
+            :type material: Material object 
+            :param crosssection: member crossection
+            :type crosssection: Crossection object
         """
         if Name in self.Members:
             print(f"warning! {Name} is already defined. this is updating the Member.")
 
         nNode = self.Nodes[nNode_name]
         pNode = self.Nodes[pNode_name]
-        member = Member(Name, nNode, pNode, E, G, J, Iy,Iz, A)
+        member = Member(Name, nNode, pNode, material, crosssection)
 
         self.Members.update({Name: member})
     
