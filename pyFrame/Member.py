@@ -531,6 +531,99 @@ class Member(object):
 
         return np.array([dx,dy,dz])
     
+    def maxDeflection(self, resolution = 100):
+        """
+            returns the maximum local deflections of the member
+            The maximum for each of the local coordinate axis x,y,z is returned, but the exact location of each of the components is independent 
+        """
+        deflections = np.asarray([self.Dl(i*self.L/(resolution)) for i in range(resolution + 1)])
+
+        return deflections.max(0)
+
+    def minDeflection(self, resolution = 100):
+        """
+            returns the minimum local deflections of the member
+            The minimum for each of the local coordinate axis x,y,z is returned, but the exact location of each of the components is independent 
+        """
+        deflections = np.asarray([self.Dl(i*self.L/(resolution)) for i in range(resolution + 1)])
+
+        return deflections.min(0)
+ 
+    
+    def maxShear(self):
+        """
+            computes the maximum shear in the members local coordinates
+            :return type: maximum shear in local y axis, maximum shear in local z axis
+        """
+        maxSy = max(map(lambda seg: seg.maxShear(), self.Segments['Y']))
+        maxSz = max(map(lambda seg: seg.maxShear(), self.Segments['Z']))
+
+        return maxSy, maxSz
+
+    def minShear(self):
+        """
+            computes the minum shear in the members local coordinates
+            :return type: minum shear in local y axis, minimum shear in local z axis
+        """
+        minSy = min(map(lambda seg: seg.minShear(), self.Segments['Y']))
+        minSz = min(map(lambda seg: seg.minShear(), self.Segments['Z']))
+
+        return minSy, minSz
+
+    def maxMoment(self):
+        """
+            computes the maximum Moment in the members local coordinates
+            :return type: maximum Moment in local y axis, maximum Moment in local z axis
+        """
+        maxMy = max(map(lambda seg: seg.maxMoment(), self.Segments['Y']))
+        maxMz = max(map(lambda seg: seg.maxMoment(), self.Segments['Z']))
+
+        return maxMy, maxMz
+
+    def minMoment(self):
+        """
+            computes the minimum Moment in the members local coordinates
+            :return type: minimum Moment in local y axis, minimum Moment in local z axis
+        """
+        minMy = min(map(lambda seg: seg.minMoment(), self.Segments['Y']))
+        minMz = min(map(lambda seg: seg.minMoment(), self.Segments['Z']))
+
+        return minMy, minMz
+
+    def maxTorsion(self):
+        """
+            computes the maximum Torsion in the members local coordinates
+        """
+        maxT = max(map(lambda seg: seg.maxTorsion(), self.Segments['X']))
+
+        return maxT
+
+    def minTorsion(self):
+        """
+            computes the minimum Torsion in the members local coordinates
+        """
+        minT = min(map(lambda seg: seg.minTorsion(), self.Segments['X']))
+
+        return minT
+
+    def maxAxial(self):
+        """
+            computes the maximum axial force in the member
+        """
+        maxP = max(map(lambda seg: seg.maxAxial(), self.Segments['Z']))
+
+        return maxP
+
+    def minAxial(self):
+        """
+            computes the minimum axial force in the member
+        """
+        minP = min(map(lambda seg: seg.minAxial(), self.Segments['Z']))
+
+        return minP
+
+
+
     def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, deformed = True, xFac = 1.0): 
     
         fig = plt.figure() 

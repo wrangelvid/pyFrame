@@ -65,6 +65,7 @@ class BeamSeg(object):
     def Deflection(self, x = None):
         """
             Returns the deflection at a location on the segment
+            The x is on the local segments coordinates and does not correspond to the members x
         """
 
         if x is None:
@@ -94,19 +95,67 @@ class BeamSeg(object):
         """
         #currently shear is constant since we have no distributed loads
         return self.S1
+    
+    def maxShear(self):
+        """
+            Returns the maximum shear force in the segment
+        """
+        #no distributed loads, thus shear is constant
+        return self.S1
+
+    def minShear(self):
+        """
+            Returns the minimum shear force in the segment
+        """
+        #no distributed loads, thus shear is constant
+        return self.S1
+
 
     def Moment(self, x):
         """
             Returns the moment at a location on the segment
+            The x is on the local segments coordinates and does not correspond to the members x
         """
         return self.M1 - self.S1*x
+    
+    def maxMoment(self):
+        """
+            Returns the maximum moment in the segment
+        """
+        return max(self.Moment(0), self.Moment(self.L))
+
+    def minMoment(self):
+        """
+            Returns the minimum moment in the segment
+        """
+        
+        return min(self.Moment(0), self.Moment(self.L))
+
+
 
     def Axial(self, x):
         """
             Returns the axial force at a location on the segment
+            The x is on the local segments coordinates and does not correspond to the members x
         """
         #currently axial load is constant sine we have no distriubed loads
         return self.P1
+
+    def maxAxial(self):
+        """
+            Returns the maximum Axial force in the segment
+        """
+        #currently axial load is constant sine we have no distriubed loads
+        return self.P1
+
+    def minAxial(self):
+        """
+            Returns the minimum Axial force in the segment
+        """
+        #currently axial load is constant sine we have no distriubed loads
+        return self.P1
+
+
 
     def Torsion(self):
         """
@@ -114,6 +163,21 @@ class BeamSeg(object):
         """
         # Here torsinal moment is constant across the segment
         return self.T1
+
+    def maxTorsion(self):
+        """
+            Returns the maximum Torsional moment in the segment
+        """
+        # Here torsinal moment is constant across the segment
+        return self.Torsion()
+
+    def minTorsion(self):
+        """
+            Returns the minimum Torsional moment in the segment
+        """
+        # Here torsinal moment is constant across the segment
+        return self.Torsion()
+
 
 class Material(object):
     def __init__(self, E, G):
