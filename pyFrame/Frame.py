@@ -47,6 +47,9 @@ class Frame(object):
 
         self.Members.update({Name: member})
     
+    def delMember(self, Name):
+        del self.Members[Name]
+    
     def makeSupport(self, Node_name, Ux = None, Uy = None, Uz = None, Rx = None, Ry = None, Rz = None):
         """
             Constraints a Node in its DoF
@@ -390,7 +393,20 @@ class Frame(object):
             mbr.Fg
             mbr._segmentate()
 
-    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, showNodeName = True, showMemberName = True, deformed = True, reactions=True, xFac = 1.0, accuracy = 20): 
+    def MoS(self, N = None):
+        """
+            returns N weakest members with respect to their individual Margin of safty 
+            weakest members are sorted by their minimum MoS
+            :param N: 
+        """
+        if N is None:
+            N = len(self.Members)
+
+        for mbr in sorted(self.Members.values(), key = lambda member: min(member.MoS()))[:N]:
+            print("Member {} : AxialMoS {} , ShearMoS {} , FlexuralMoS {}".format(mbr.Name,*map(lambda num: round(num,3),mbr.MoS())))
+
+
+    def plot(self, label_offset=0.01, xMargin=0.25, yMargin=0.25, zMargin=0.5, elevation=20, rotation=35, showNodeName = True, showMemberName = True, deformed = True, undeformed = True, reactions=True, xFac = 1.0, accuracy = 20): 
     
         fig = plt.figure() 
         axes = fig.add_axes([0.1,0.1,3,3],projection='3d') #Indicate a 3D plot 
@@ -410,7 +426,7 @@ class Frame(object):
             #Create color scale for member forces
             cmap = plt.cm.seismic #Define the color scale to use (note _r reverses colourmap)
             axialForces = [mbr.Fl[0,0] for mbr in self.Members.values()]
-            colorNorm = matplotlib.colors.TwoSlopeNorm(vmin=min(axialForces), vmax=max(axialForces), vcenter=0.0) # Normalise colour scale to limits of my data
+            colorNorm = matplotlib.colors.TwoSlopeNorm(vmin=min([min(axialForces), 0]), vcenter = 0.0, vmax=max(axialForces)) # Normalise colour scale to limits of my data
 
             #show colorbar
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=colorNorm)
@@ -423,7 +439,8 @@ class Frame(object):
 
             mbrPoints = np.linspace(nNode_pos, pNode_pos, accuracy + 1)
 
-            axes.plot3D(mbrPoints[:,0], mbrPoints[:,1], mbrPoints[:,2],'b') #Plot 3D member
+            if undeformed:
+                axes.plot3D(mbrPoints[:,0], mbrPoints[:,1], mbrPoints[:,2],'b') #Plot 3D member
 
             #plot member name 
             if showMemberName:
@@ -437,7 +454,7 @@ class Frame(object):
                 R = mbr.R[:3,:3].T
                 mLoad_force =  (R@mLoad.vector()).tolist()
                 mLoad_position = (R@np.array([mLoad.x,0,0]) + mbr.nNode.pos()).tolist()
-                axes.quiver(*mLoad_position,*mLoad_force, length=0.5, normalize=True, pivot='tip')
+                axes.quiver(*mLoad_position,*mLoad_force, length=500, normalize=True, pivot='tip')
 
             #plot deformed members
             #TODO somehow implement rotation
@@ -495,7 +512,8 @@ class Frame(object):
                 minZ = node.z
 
             # plot 3d Node
-            axes.plot3D([node.x],[node.y],[node.z],'bo',ms=6)
+            if undeformed:
+                axes.plot3D([node.x],[node.y],[node.z],'bo',ms=6)
 
             if showNodeName:
                 # add node label
@@ -508,7 +526,7 @@ class Frame(object):
             #plot reactions
             if reactions:
                 #TODO implement moment reactions
-                axes.quiver(*node.pos().tolist(),*node.reaction()[:3].tolist(), length=0.5, normalize=True, pivot='tip', colors='g')
+                axes.quiver(*node.pos().tolist(),*node.reaction()[:3].tolist(), length=500, normalize=True, pivot='tip', colors='g')
 
         
         #draw Nodal Force Vectors

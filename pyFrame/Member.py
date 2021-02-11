@@ -1,5 +1,5 @@
 import numpy as np
-from math import isclose
+from math import isclose, pi
 from pyFrame.Loads import MemberPtForce, MemberPtMoment
 from pyFrame.Beam import BeamSeg
 from matplotlib import pyplot as plt
@@ -330,7 +330,6 @@ class Member(object):
                         [    0,            0,              0,   G*J/L,             0,              0],
                         [    0,            0,    6*E*Iy/L**2,       0,      4*E*Iy/L,              0],
                         [    0, -6*E*Iz/L**2,              0,       0,             0,       4*E*Iz/L]])
-   
         #concatenate matrices to full local stiffness matrix
         top = np.concatenate((KlAA,KlAB),axis=1)
         btm = np.concatenate((KlBA,KlBB),axis=1)
@@ -621,6 +620,92 @@ class Member(object):
         minP = min(map(lambda seg: seg.minAxial(), self.Segments['Z']))
 
         return minP
+    
+    def maxFlexuralStress(self):
+        """
+           maximum Flexural stress in x = -Mz(x)/Iz * z - Mz(x)/Iy*y
+           This calculatiuon highly depends on the crossection 
+        """
+
+        My = np.asarray(list(map(lambda seg: [seg.Moment(0), seg.Moment(seg.L)], self.Segments['Y']))).flatten()
+        Mz = np.asarray(list(map(lambda seg: [seg.Moment(0), seg.Moment(seg.L)], self.Segments['Z']))).flatten()
+
+        pts = self.crosssection.maxStressPoints()
+        y, z = pts[:,0,None], pts[:,1,None]
+
+        flexStresses = -Mz[:,None]/self.Iz@z.T - My[:,None]/self.Iy@y.T
+
+        return abs(flexStresses).max()
+
+    def axialStress(self):
+        """
+            Tensile tress = -P/A
+        """
+        
+        maxP = self.maxAxial()
+        return -maxP/self.A
+        
+    def avgShearStress(self):
+        """
+            Avarage shear stress
+            TODO implement more sophistaced shear stress for complex crosssections
+        """
+        maxSy, maxSz = self.maxShear()
+        return maxSy/self.A, maxSz/self.A
+
+
+    def _crBucklingStress(self, mode = 1):
+        """
+        computes the critical buckling stress for buckling in y and z
+        """
+        crBy = mode*pi**2*self.E*self.Iy/(self.L**2*self.A)
+        crBz = mode*pi**2*self.E*self.Iz/(self.L**2*self.A)
+
+        return crBy, crBz
+    
+    def MoS(self):
+        """
+            Determines the minimum margin of saftey of the members axial strength, shear strength and flexural strength
+        """
+        #compute flexural MoS
+        maxFlexuralStress = self.maxFlexuralStress()
+        if maxFlexuralStress:
+            flexuralMoS = self.material.flexural_yield_strength/maxFlexuralStress - 1
+        else:
+            flexuralMoS = float('inf')
+
+        #compute axial MoS  
+        axial = self.axialStress()
+        if axial <0:
+            #member is under compression
+            if min(self._crBucklingStress())/2 < abs(axial):
+                #critical buckling stress is exceeded, and we stop computation
+                # to continue we need to consider buckling in our member moment calculations
+                axialMoS = float('-inf')
+                flexuralMoS = float('-inf')
+            else: 
+                axialMoS = abs(self.material.compressive_yield_strength/axial) - 1
+        elif axial == 0:
+            axialMoS = float('inf')
+
+        else:
+            axialMoS = abs(self.material.tensile_yield_strength/axial) - 1
+        
+        # compute shear MoS
+        Ty, Tz = self.avgShearStress()
+
+        if not Ty:
+            #avoid division by 0
+            Ty = 1e-10
+
+        if not Tz:
+            #avoid division by 0
+            Tz = 1e-10
+
+        shearMoS = min(abs(self.material.shear_strength/Ty) - 1, abs(self.material.shear_strength/Tz - 1))
+
+        return axialMoS, shearMoS, flexuralMoS
+            
 
 
 

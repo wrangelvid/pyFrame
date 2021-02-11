@@ -71,7 +71,7 @@ class BeamSeg(object):
         if x is None:
             x = self.L
 
-        if self.segType == 'Z': 
+        if self.segType in ['Z', 'X']: 
             return self.delta1 + self.theta1*x - self.M1*x**2/(2*self.EI) + self.S1*x**3/(6*self.EI) 
         else:
             return self.delta1 - self.theta1*x + self.M1*x**2/(2*self.EI) + self.S1*x**3/(6*self.EI) 
@@ -191,6 +191,46 @@ class Material(object):
         self.E = E
         self.G = G
 
+        self._flexural_yield_strength = None
+        self._tensile_yield_strength = None
+        self._compressive_yield_strength = None
+        self._shear_strength = None
+    
+    @property
+    def flexural_yield_strength(self):
+        return self._flexural_yield_strength
+    
+    @flexural_yield_strength.setter
+    def flexural_yield_strength(self, strength):
+        self._flexural_yield_strength = strength
+
+    @property
+    def tensile_yield_strength(self):
+        return self._tensile_yield_strength
+    
+    @tensile_yield_strength.setter
+    def tensile_yield_strength(self, strength):
+        self._tensile_yield_strength = strength
+
+    @property
+    def compressive_yield_strength(self):
+        return self._compressive_yield_strength
+    
+    @compressive_yield_strength.setter
+    def compressive_yield_strength(self, strength):
+        self._compressive_yield_strength = strength
+
+    @property
+    def shear_strength(self):
+        return self._shear_strength
+    
+    @shear_strength.setter
+    def shear_strength(self, strength):
+        self._shear_strength = strength
+
+
+
+
 
 
 class Crosssection(object):
@@ -302,7 +342,16 @@ class Crosssection(object):
 
         return abs(Iy), abs(Iz), abs(Iy) + abs(Iz)
     
-    
+    def maxStressPoints(self):    
+        """
+            returns an array of points relative to the centroid which could yield high bending stresses
+            the boundary of the crosssection will experience the highest bending stresses,
+            thus for simple geometries we just return the corner points, here the polygon, of the crossection
+            Rounded crossections may need a higher resolution.
+        """
+        pts = self.pts - self.centroid 
+        return pts[:-1,:]
+
     def plot(self):
         """
         Plots the cross section defined by the input boundary points.
