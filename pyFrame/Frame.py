@@ -448,13 +448,14 @@ class Frame(object):
                 axes.text(*text_pos, name, fontsize=16)
 
             #plot member point forces
-            for mLoad in filter(lambda load: type(load) == MemberPtForce ,mbr.ptLoads):
-                mag = np.sum(np.square(mLoad.vector().T))**0.5
-                #transform local force vector to global force vector
-                R = mbr.R[:3,:3].T
-                mLoad_force =  (R@mLoad.vector()).tolist()
-                mLoad_position = (R@np.array([mLoad.x,0,0]) + mbr.nNode.pos()).tolist()
-                axes.quiver(*mLoad_position,*mLoad_force, length=500, normalize=True, pivot='tip')
+            if undeformed:
+                for mLoad in filter(lambda load: type(load) == MemberPtForce ,mbr.ptLoads):
+                    mag = np.sum(np.square(mLoad.vector().T))**0.5
+                    #transform local force vector to global force vector
+                    R = mbr.R[:3,:3].T
+                    mLoad_force =  (R@mLoad.vector()).tolist()
+                    mLoad_position = (R@np.array([mLoad.x,0,0]) + mbr.nNode.pos()).tolist()
+                    axes.quiver(*mLoad_position,*mLoad_force, length=500, normalize=True, pivot='tip')
 
             #plot deformed members
             #TODO somehow implement rotation

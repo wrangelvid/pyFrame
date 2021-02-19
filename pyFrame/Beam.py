@@ -57,7 +57,7 @@ class BeamSeg(object):
         if x is None:
             x = self.L
         
-        if self.segType == 'Z':
+        if self.segType in ['Z','X']:
             return self.theta1 - (self.M1*x - self.S1*x**2/2)/(self.EI)
         else:
             return self.theta1 - (self.M1*x + self.S1*x**2/2)/(self.EI)

@@ -443,8 +443,8 @@ class Member(object):
         discontinuities = sorted(set([0, self.L] + [ptLoad.x for ptLoad in self.ptLoads]))
 
         for x_start, x_end in zip(discontinuities[:-1], discontinuities[1:]):
-            self.Segments['Z'] = self.Segments.get('Z', []) + [BeamSeg('Z', x_start, x_end, self.E*self.A, self.E*self.Iy)]
-            self.Segments['Y'] = self.Segments.get('Y', []) + [BeamSeg('Y', x_start, x_end, self.E*self.A, self.E*self.Iz)]
+            self.Segments['Z'] = self.Segments.get('Z', []) + [BeamSeg('Z', x_start, x_end, self.E*self.A, self.E*self.Iz)]
+            self.Segments['Y'] = self.Segments.get('Y', []) + [BeamSeg('Y', x_start, x_end, self.E*self.A, self.E*self.Iy)]
             self.Segments['X'] = self.Segments.get('X', []) + [BeamSeg('X', x_start, x_end, self.E*self.A)]
         
  
