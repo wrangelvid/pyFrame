@@ -83,11 +83,14 @@ class Frame(object):
         #define which displacment relations are immutable
         node.support = [not Ux is None,  not Uy is None, not Uz is None, not Rx is None,  not Ry is None, not Rz is None]
 
-    def makeRelease(self, Node_name, Ux = None, Uy = None, Uz = None, Rx = None, Ry = None, Rz = None):
-
-        node = self.Nodes[Node_name]
-        #TODO
-        pass
+    def makeRelease(self,Member_name, Node_name, Ux = False, Uy = False, Uz = False, Rx = False, Ry = False, Rz = False):
+        mbr = self.Members[Member_name]
+        if Node_name == mbr.nNode.Name:
+            mbr.nReleases = [Ux, Uy, Uz, Rx, Ry, Rz]
+        elif Node_name == mbr.pNode.Name:
+            mbr.pReleases = [Ux, Uy, Uz, Rx, Ry, Rz]
+        else:
+            raise Exception(f"{Node_name} is not connected to {Member_name}")
     
     def addNodeLoad(self, Node_name, Force_name = None, Fx = 0, Fy = 0, Fz = 0):
         #get node
@@ -527,7 +530,7 @@ class Frame(object):
             #plot reactions
             if reactions:
                 #TODO implement moment reactions
-                axes.quiver(*node.pos().tolist(),*node.reaction()[:3].tolist(), length=500, normalize=True, pivot='tip', colors='g')
+                axes.quiver(*node.pos().tolist(),*node.reaction()[:3].tolist(), length=(maxZ-minZ)*0.2, normalize=True, pivot='tip', colors='g')
 
         
         #draw Nodal Force Vectors
@@ -540,9 +543,9 @@ class Frame(object):
         axes.set_ylim([minY-y_margin,maxY+y_margin])
         axes.set_zlim([min([0,minZ]),maxZ+z_margin])
 
-        axes.set_xlabel('X-coordinate (m)')
-        axes.set_ylabel('Y-coordinate (m)')
-        axes.set_zlabel('Z-coordinate (m)')
+        axes.set_xlabel('X-coordinate (mm)')
+        axes.set_ylabel('Y-coordinate (mm)')
+        axes.set_zlabel('Z-coordinate (mm)')
         axes.set_title('Structure to analyse')
         axes.grid()
         plt.show()
